@@ -1,13 +1,8 @@
-from pprint import pprint
-
-import aiohttp
 import asyncio
 from more_itertools import chunked
-from function import get_people
+from function import get_swapi_object
 from aiohttp import ClientSession
-from models import paste_people
-
-from models import Base, SwapiPeople, Session, engine
+from function import paste_to_db, prepare_for_orm, make_db_table, drop_db_table
 
 MAX_REQUESTS = 5
 
@@ -23,26 +18,32 @@ async def main(quantity: int):
 
     """
 
-    # Этот участок кода запускается один раз для создания миграции
-
-    # async with engine.begin() as connection:  # Код создает миграции в БД. Такой код нужен для асинхронного прогр-я.
-    #     await connection.run_sync(Base.metadata.create_all)
+    await drop_db_table()
+    await make_db_table()
 
     async with ClientSession() as client:
-        for chunk in chunked(range(1, quantity + 1), MAX_REQUESTS):
-            chunk_coro_list = [get_people(people_id=person_id, api_client=client) for person_id in chunk]
-            # формируем список корутин.
+        for chunk in chunked(range(1, quantity + 1), MAX_REQUESTS):  # разбиваем запросы на чанки.
+            # формируем список корутин, функция получения json персонажей.
+            chunk_coro_list = [get_swapi_object(group_name='people', object_id=id_, api_client=client) for id_ in chunk]
 
-            res_list = await asyncio.gather(*chunk_coro_list)  # асинхронно обрабатываем список корутин.
-            paste_coro = paste_people(res_list)
-            paste_task = asyncio.create_task(paste_coro)
+            # Асинхронно обрабатываем корутины. На выходе список.
+            res_list = await asyncio.gather(*chunk_coro_list)
 
-    tasks = asyncio.all_tasks() - {asyncio.current_task(), }
-    for task in tasks:
+            # готовим список корутин, функция обработки json персонажей.
+            coro_list = [prepare_for_orm(some_json=dict_, client=client) for dict_ in res_list]
+
+            # обрабатываем корутины, получаем список словарей для вставки в БД.
+            ready_to_paste_list = await asyncio.gather(*coro_list)
+
+            paste_coro = paste_to_db(ready_to_paste_list)  # делаем корутину по вставке в БД.
+
+            paste_task = asyncio.create_task(paste_coro)  # создаем таск на вставку в БД.
+    #
+    tasks = asyncio.all_tasks() - {asyncio.current_task(), }  # получаем все открытые таски.
+    for task in tasks:  # выполняем все таски принудительно.
         await task
 
 
 if __name__ == '__main__':
-    result = asyncio.run(main(quantity=50))
-    # pprint(result[0][0])
-
+    result = asyncio.run(main(quantity=20))
+    print('ok.')
