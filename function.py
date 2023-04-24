@@ -2,7 +2,6 @@ from models import Session, SwapiPeople
 from models import engine, Base
 
 
-# Этот участок кода запускается один раз для создания миграции.
 async def make_db_table():
     """Функция делает миграцию в БД и создает таблицы."""
 
@@ -10,7 +9,6 @@ async def make_db_table():
         await connection.run_sync(Base.metadata.create_all)
 
 
-# Этот участок кода запускается один раз для удаления миграции.
 async def drop_db_table():
     """Функция делает миграцию в БД и удаляет таблицы."""
 
