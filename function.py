@@ -65,7 +65,7 @@ async def prepare_for_orm(some_json: dict, client):
 
     # Получение названия планеты.
     link = some_json.get('homeworld')  # получаем ссылку на планету.
-    print(link)
+    # print(link)
     if link is None:  # если ссылки нет,
         some_json['homeworld'] = None  # устанавливаем значение None для записи в БД.
     else:
