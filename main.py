@@ -3,6 +3,7 @@ from more_itertools import chunked
 from function import get_swapi_object
 from aiohttp import ClientSession
 from function import paste_to_db, prepare_for_orm, make_db_table, drop_db_table
+import datetime
 
 MAX_REQUESTS = 5
 
@@ -18,11 +19,11 @@ async def main(quantity: int):
 
     """
 
-    await drop_db_table()
-    await make_db_table()
+    # await drop_db_table()
+    # await make_db_table()
 
     async with ClientSession() as client:
-        for chunk in chunked(range(1, quantity + 1), MAX_REQUESTS):  # разбиваем запросы на чанки.
+        for chunk in chunked(range(20, quantity + 1), MAX_REQUESTS):  # разбиваем запросы на чанки.
             # формируем список корутин, функция получения json персонажей.
             chunk_coro_list = [get_swapi_object(group_name='people', object_id=id_, api_client=client) for id_ in chunk]
 
@@ -45,5 +46,7 @@ async def main(quantity: int):
 
 
 if __name__ == '__main__':
-    result = asyncio.run(main(quantity=20))
-    print('ok.')
+    start = datetime.datetime.now()
+    result = asyncio.run(main(quantity=30))
+
+    print(datetime.datetime.now() - start)

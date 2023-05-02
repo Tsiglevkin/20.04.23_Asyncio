@@ -1,3 +1,5 @@
+import asyncio
+
 from models import Session, SwapiPeople
 from models import engine, Base
 
@@ -53,10 +55,14 @@ async def prepare_for_orm(some_json: dict, client):
 
     for key, value in some_json.items():  # словарь, где в одном из значений список ссылок.
         if type(value) == list:  # если в значении список ссылок,
+            response_coro_list = [client.get(link) for link in value]  # асинхронно формируем коро объекты запросов.
+            response_list = await asyncio.gather(*response_coro_list)  # обрабатываем.
+
+            json_coro_list = [response.json() for response in response_list]  # асинхронно получаем json'ы.
+            json_data_list = await asyncio.gather(*json_coro_list)  # Обрабатываем. На выходе список json-объектов.
+
             temp_list = []  # создаем временный список и добавляем туда значения выбранного поля - имя, название или пр.
-            for link in value:
-                response = await client.get(link)  # делаем get-запрос по ссылке.
-                json_data = await response.json()  # делаем json.
+            for json_data in json_data_list:
                 if json_data.get('name') is not None:  # если в словаре есть ключ name, то
                     temp_list.append(json_data.get('name'))  # добавляем промежуточный список значение для склейки.
                 else:
